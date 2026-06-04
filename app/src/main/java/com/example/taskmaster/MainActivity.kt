@@ -24,11 +24,16 @@ import com.example.taskmaster.pages.HomeScreen
 import com.example.taskmaster.pages.TelaAdicionarTarefaScreen
 import kotlinx.serialization.Serializable
 
-@Serializable
-object HomeRoute
 
-@Serializable
-object AdicionarTarefaRoute
+import androidx.activity.compose.setContent
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.taskmaster.ui.theme.TaskMasterTheme
+import com.example.taskmaster.pages.HomeScreen
+import com.example.taskmaster.pages.TelaAdicionarTarefaScreen
+
+// APAGAMOS OS OBJETOS @SERIALIZABLE DAQUI DE CIMA
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,27 +42,29 @@ class MainActivity : ComponentActivity() {
             TaskMasterTheme {
                 val navController = rememberNavController()
 
+                // Usamos a string simples "home" como ponto de partida
                 NavHost(
                     navController = navController,
-                    startDestination = HomeRoute
+                    startDestination = "home"
                 ){
-                    composable<HomeRoute> {
+                    // Rota como String comum
+                    composable("home") {
                         HomeScreen(
                             onNavegarParaAdicionar = {
-                                navController.navigate(AdicionarTarefaRoute)
+                                navController.navigate("adicionar_tarefa")
                             }
                         )
                     }
 
-                    composable<AdicionarTarefaRoute> {
-                    TelaAdicionarTarefaScreen (
-                        onVoltar = {
-                            navController.popBackStack() // Volta para a tela anterior
-                        }
-                    )
+                    // Rota como String comum
+                    composable("adicionar_tarefa") {
+                        TelaAdicionarTarefaScreen(
+                            onVoltar = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
                 }
-                }
-
             }
         }
     }
@@ -72,7 +79,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-
-
-
