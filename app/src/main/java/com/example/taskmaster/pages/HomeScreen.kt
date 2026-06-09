@@ -58,6 +58,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeScreen(
     onNavegarParaAdicionar: () -> Unit,
+    onNavegarParaDetalhes: (Tarefa) -> Unit,
     viewModel: TarefaViewModel = viewModel()
 ) {
     var statusSelecionado by remember { mutableStateOf<StatusTarefa?>(null) }
@@ -209,7 +210,8 @@ fun HomeScreen(
             cardAtividades(
                 modifier = Modifier.weight(1f),
                 tarefas = tarefasFiltradas,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onTarefaClick = onNavegarParaDetalhes
             )
         }
     }
@@ -219,7 +221,8 @@ fun HomeScreen(
 fun cardAtividades(
     modifier: Modifier = Modifier,
     tarefas: List<Tarefa>,
-    viewModel: TarefaViewModel
+    viewModel: TarefaViewModel,
+    onTarefaClick: (Tarefa) -> Unit
 ) {
     val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     val hoje = LocalDate.now()
@@ -288,7 +291,7 @@ fun cardAtividades(
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 onClick = {
-                    // abrir a tarefa pelo id dela aqui
+                    onTarefaClick(tarefa)
                 }
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {

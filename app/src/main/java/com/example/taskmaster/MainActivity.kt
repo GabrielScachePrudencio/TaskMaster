@@ -3,37 +3,17 @@ package com.example.taskmaster
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.ViewModel
-import com.example.taskmaster.ui.theme.TaskMasterTheme
-import com.example.taskmaster.viewmodel.TarefaViewModel
-import androidx.compose.foundation.lazy.items
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.taskmaster.pages.HomeScreen
 import com.example.taskmaster.pages.TelaAdicionarTarefaScreen
-import kotlinx.serialization.Serializable
-
-
-import androidx.activity.compose.setContent
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import com.example.taskmaster.pages.TelaDetalheTarefaScreen // Importe a nova tela
 import com.example.taskmaster.ui.theme.TaskMasterTheme
-import com.example.taskmaster.pages.HomeScreen
-import com.example.taskmaster.pages.TelaAdicionarTarefaScreen
-
-// APAGAMOS OS OBJETOS @SERIALIZABLE DAQUI DE CIMA
+import com.example.taskmaster.viewmodel.TarefaViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,24 +22,47 @@ class MainActivity : ComponentActivity() {
             TaskMasterTheme {
                 val navController = rememberNavController()
 
-                // Usamos a string simples "home" como ponto de partida
+                // 1. Instanciamos o ViewModel aqui. Ele será compartilhado por todas as telas abaixo.
+                val tarefaViewModel: TarefaViewModel = viewModel()
+
                 NavHost(
                     navController = navController,
                     startDestination = "home"
-                ){
-                    // Rota como String comum
+                ) {
+                    // Rota da Tela Inicial
                     composable("home") {
                         HomeScreen(
+                            viewModel = tarefaViewModel, // Passe o viewModel para a HomeScreen listar as tarefas
                             onNavegarParaAdicionar = {
                                 navController.navigate("adicionar_tarefa")
+                            },
+                            onNavegarParaDetalhes = { tarefa ->
+                                // Avisa o ViewModel qual tarefa foi clicada
+                                tarefaViewModel.selecionarTarefa(tarefa)
+                                // Navega para a tela de detalhes
+                                navController.navigate("detalhes_tarefa")
                             }
                         )
                     }
 
-                    // Rota como String comum
+                    // Rota para Adicionar Tarefa
                     composable("adicionar_tarefa") {
                         TelaAdicionarTarefaScreen(
                             onVoltar = {
+                                // Ao voltar, recarregamos a lista caso uma tarefa nova tenha sido inserida
+                                tarefaViewModel.carregarTarefas()
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    // 2. NOVA ROTA: Detalhes e Edição da Tarefa
+                    composable("detalhes_tarefa") {
+                        TelaDetalheTarefaScreen(
+                            viewModel = tarefaViewModel,
+                            onVoltar = {
+                                // Ao voltar da edição, atualiza a lista da HomeScreen
+                                tarefaViewModel.carregarTarefas()
                                 navController.popBackStack()
                             }
                         )
@@ -74,7 +77,9 @@ class MainActivity : ComponentActivity() {
     fun HomeScreenPreview() {
         TaskMasterTheme {
             HomeScreen(
-                onNavegarParaAdicionar = {}
+                viewModel = viewModel(),
+                onNavegarParaAdicionar = {},
+                onNavegarParaDetalhes = {}
             )
         }
     }
