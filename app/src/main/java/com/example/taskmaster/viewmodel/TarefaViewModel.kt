@@ -9,6 +9,7 @@ import com.example.taskmaster.model.Tarefa
 import com.example.taskmaster.model.enuns.Prioridade
 import com.example.taskmaster.model.enuns.StatusTarefa
 import com.example.taskmaster.repository.TarefaRepository
+import java.time.LocalDate
 
 class TarefaViewModel : ViewModel() {
     val tarefas = mutableStateListOf<Tarefa>()
@@ -85,4 +86,31 @@ class TarefaViewModel : ViewModel() {
             }
         }
     }
+
+
+    fun atualizarDataInicio(idAtividade: Int, novaData: LocalDate?) {
+        val indice = tarefas.indexOfFirst { it.id == idAtividade }
+        if (indice != -1) {
+            val tarefaAtualizada = tarefas[indice].copy(dataInicio = novaData)
+            tarefas[indice] = tarefaAtualizada
+            TarefaRepository.atualizar(tarefaAtualizada)
+            if (tarefaSelecionada?.id == idAtividade) {
+                tarefaSelecionada = tarefaAtualizada
+            }
+        }
+    }
+
+    fun atualizarDataFinal(idAtividade: Int, novaData: LocalDate?) {
+        val indice = tarefas.indexOfFirst { it.id == idAtividade }
+        if (indice != -1) {
+            val tarefaAtualizada = tarefas[indice].copy(dataFinal = novaData)
+            tarefas[indice] = tarefaAtualizada
+            TarefaRepository.atualizar(tarefaAtualizada)
+            if (tarefaSelecionada?.id == idAtividade) {
+                tarefaSelecionada = tarefaAtualizada
+            }
+        }
+    }
+
+
 }

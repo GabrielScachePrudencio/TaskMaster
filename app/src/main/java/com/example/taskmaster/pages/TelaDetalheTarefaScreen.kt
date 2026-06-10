@@ -6,14 +6,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.taskmaster.model.enuns.Prioridade
 import com.example.taskmaster.model.enuns.StatusTarefa
 import com.example.taskmaster.viewmodel.TarefaViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,11 +31,59 @@ fun TelaDetalheTarefaScreen(
     val isEdicao = viewModel.modoEdicao
     val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
+    // Controla qual DatePicker está aberto: "inicio", "final" ou null
+    var datePickerAlvo by remember { mutableStateOf<String?>(null) }
+
     if (tarefa == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Nenhuma tarefa encontrada.")
         }
         return
+    }
+
+    // DatePickerDialog reutilizável
+    if (datePickerAlvo != null) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = when (datePickerAlvo) {
+                "inicio" -> tarefa.dataInicio
+                    ?.atStartOfDay(ZoneId.of("UTC"))
+                    ?.toInstant()
+                    ?.toEpochMilli()
+                "final" -> tarefa.dataFinal
+                    ?.atStartOfDay(ZoneId.of("UTC"))
+                    ?.toInstant()
+                    ?.toEpochMilli()
+                else -> null
+            }
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { datePickerAlvo = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {   
+                        val dataSelecionada = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.of("UTC"))
+                            .toLocalDate()
+                        when (datePickerAlvo) {
+                            "inicio" -> viewModel.atualizarDataInicio(tarefa.id, dataSelecionada)
+                            "final" -> viewModel.atualizarDataFinal(tarefa.id, dataSelecionada)
+                        }
+                    }
+                    datePickerAlvo = null
+                }) {
+                    Text("Confirmar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { datePickerAlvo = null }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     Scaffold(
@@ -44,11 +97,8 @@ fun TelaDetalheTarefaScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        if (isEdicao) {
-                            viewModel.salvarEdicao()
-                        } else {
-                            viewModel.alternarModoEdicao()
-                        }
+                        if (isEdicao) viewModel.salvarEdicao()
+                        else viewModel.alternarModoEdicao()
                     }) {
                         Icon(
                             imageVector = if (isEdicao) Icons.Default.Check else Icons.Default.Edit,
@@ -64,7 +114,7 @@ fun TelaDetalheTarefaScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState()) // Permite rolar a tela se a descrição for longa
+                .verticalScroll(rememberScrollState())
         ) {
 
             // --- CAMPO TÍTULO ---
@@ -95,7 +145,10 @@ fun TelaDetalheTarefaScreen(
             // --- SELEÇÃO DE STATUS ---
             Text("Status:", style = MaterialTheme.typography.titleMedium)
             if (isEdicao) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     StatusTarefa.entries.forEach { status ->
                         FilterChip(
                             selected = tarefa.statusTarefa == status,
@@ -113,7 +166,10 @@ fun TelaDetalheTarefaScreen(
             // --- SELEÇÃO DE PRIORIDADE ---
             Text("Prioridade:", style = MaterialTheme.typography.titleMedium)
             if (isEdicao) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Prioridade.entries.forEach { prioridade ->
                         FilterChip(
                             selected = tarefa.prioridade == prioridade,
@@ -130,24 +186,92 @@ fun TelaDetalheTarefaScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- EXIBIÇÃO DE DATAS ---
+            // --- DATA DE CADASTRO (somente leitura) ---
             Text(
                 text = "Data de Cadastro: ${tarefa.dataCadastro.format(dateFormatter)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            tarefa.dataInicio?.let {
-                Text(
-                    text = "Data de Início: ${it.format(dateFormatter)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            tarefa.dataFinal?.let {
+            // --- DATA DE INÍCIO ---
+            CampoData(
+                label = "Data de Início",
+                data = tarefa.dataInicio,
+                formatter = dateFormatter,
+                isEdicao = isEdicao,
+                onSelecionarData = { datePickerAlvo = "inicio" },
+                onLimparData = { viewModel.atualizarDataInicio(tarefa.id, null) }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // --- DATA FINAL ---
+            CampoData(
+                label = "Prazo Final",
+                data = tarefa.dataFinal,
+                formatter = dateFormatter,
+                isEdicao = isEdicao,
+                onSelecionarData = { datePickerAlvo = "final" },
+                onLimparData = { viewModel.atualizarDataFinal(tarefa.id, null) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CampoData(
+    label: String,
+    data: LocalDate?,
+    formatter: DateTimeFormatter,
+    isEdicao: Boolean,
+    onSelecionarData: () -> Unit,
+    onLimparData: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(text = "$label:", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(6.dp))
+
+        if (isEdicao) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onSelecionarData,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = data?.format(formatter) ?: "Selecionar data"
+                    )
+                }
+
+                // Botão para limpar a data, só aparece se já tiver uma data definida
+                if (data != null) {
+                    TextButton(onClick = onLimparData) {
+                        Text("Limpar", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        } else {
+            if (data != null) {
+                SuggestionChip(
+                    onClick = {},
+                    label = { Text(data.format(formatter)) }
+                )
+            } else {
                 Text(
-                    text = "Prazo Final: ${it.format(dateFormatter)}",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Não definida",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
