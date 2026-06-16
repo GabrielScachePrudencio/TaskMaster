@@ -1,108 +1,144 @@
 package com.example.taskmaster.repository
 
-import android.R.bool
 import com.example.taskmaster.model.Tarefa
 import com.example.taskmaster.model.enuns.Prioridade
 import com.example.taskmaster.model.enuns.StatusTarefa
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
-object TarefaRepository {
-    private val tarefas = mutableListOf<Tarefa>(
-        Tarefa(
-            id = 1,
-            titulo = "Estudar Jetpack Compose",
-            descricao = "Praticar a criação de telas e LazyColumn",
-            dataCadastro = LocalDate.now(),
-            dataInicio = null,
-            dataFinal = null
-        ),
-        Tarefa(
-            id = 2,
-            titulo = "Ajustar o TaskMaster",
-            descricao = "Corrigir os erros de compilação do projeto",
-            dataCadastro = LocalDate.now(),
-            dataInicio = null,
-            dataFinal = null
-        ),
-        Tarefa(
-            id = 3,
-            titulo = "Fazer trabalho da faculdade",
-            descricao = "Finalizar o projeto de Sistemas para Internet",
-            statusTarefa = StatusTarefa.PENDENTE,
-            prioridade = Prioridade.IMPORTANTE,
-            dataCadastro = LocalDate.now(),
-            dataInicio = LocalDate.now(),
-            dataFinal = LocalDate.now().plusDays(7)
-        ),
 
-        Tarefa(
-            id = 4,
-            titulo = "Pagar conta de energia",
-            descricao = "Vencimento na próxima semana",
-            statusTarefa = StatusTarefa.AGUARDANDO,
-            prioridade = Prioridade.LEMBRETE,
-            dataCadastro = LocalDate.now(),
-            dataInicio = null,
-            dataFinal = LocalDate.now().plusDays(5)
-        ),
+class TarefaRepository(
+    private val storage: TarefaStorage
+) {
 
-        Tarefa(
-            id = 5,
-            titulo = "Treinar Kotlin",
-            descricao = "Resolver exercícios de Compose e ViewModel",
-            statusTarefa = StatusTarefa.CONCLUIDO,
-            prioridade = Prioridade.NORMAL,
-            dataCadastro = LocalDate.now().minusDays(3),
-            dataInicio = LocalDate.now().minusDays(2),
-            dataFinal = LocalDate.now().minusDays(1)
-        ),
 
-        Tarefa(
-            id = 6,
-            titulo = "Comprar peças para o drone",
-            descricao = "Pesquisar ESP32, motores e controladora",
-            statusTarefa = StatusTarefa.PENDENTE,
-            prioridade = Prioridade.IMPORTANTE,
-            dataCadastro = LocalDate.now(),
-            dataInicio = LocalDate.now().plusDays(1),
-            dataFinal = LocalDate.now().plusDays(10)
+    val tarefas: Flow<List<Tarefa>> =
+        storage.tarefas
+
+
+    suspend fun inicializar() {
+
+        val lista =
+            storage.tarefas.first()
+
+
+        if (lista.isEmpty()) {
+
+            storage.salvar(
+
+                listOf(
+
+                    Tarefa(
+                        1,
+                        "Estudar Jetpack Compose",
+                        "Praticar criação de telas",
+                        dataCadastro = LocalDate.now(),
+                        dataInicio = null,
+                        dataFinal = null
+                    ),
+
+
+                    Tarefa(
+                        2,
+                        "Ajustar TaskMaster",
+                        "Corrigir erros do projeto",
+                        StatusTarefa.AGUARDANDO,
+                        Prioridade.IMPORTANTE,
+                        LocalDate.now(),
+                        LocalDate.now(),
+                        null
+                    ),
+
+
+                    Tarefa(
+                        3,
+                        "Trabalho da faculdade",
+                        "Finalizar projeto",
+                        StatusTarefa.PENDENTE,
+                        Prioridade.LEMBRETE,
+                        LocalDate.now(),
+                        LocalDate.now(),
+                        LocalDate.now().plusDays(7)
+                    )
+
+                )
+
+            )
+
+        }
+
+    }
+
+
+    suspend fun adicionar(
+        tarefa: Tarefa
+    ) {
+
+        val lista =
+            storage.tarefas.first()
+
+
+        storage.salvar(
+            lista + tarefa
         )
 
-    )
-    fun listar() : List<Tarefa>{
-        return tarefas
     }
 
-    fun add(tarefa: Tarefa) : Boolean {
-        if(tarefa != null){
-            tarefas.add(tarefa)
-            return true
-        } else {
-            return false
-        }
+
+    suspend fun atualizar(
+        tarefa: Tarefa
+    ) {
+
+        val lista =
+            storage.tarefas.first()
+
+
+        storage.salvar(
+
+            lista.map {
+
+                if (it.id == tarefa.id)
+                    tarefa
+                else
+                    it
+
+            }
+
+        )
+
     }
 
-    fun deletar(id: Int) : Boolean{
-        val tarefa: Tarefa? = findById(id)
 
-        if(tarefa != null){
-            tarefas.remove(tarefa)
-            return true
-        }
+    suspend fun deletar(
+        id: Int
+    ) {
 
-        return false
+        val lista =
+            storage.tarefas.first()
+
+
+        storage.salvar(
+
+            lista.filter {
+                it.id != id
+            }
+
+        )
+
     }
 
-    fun findById(id: Int) : Tarefa?{
-        return tarefas.find { it.id == id }
-    }
 
-    fun atualizar(tarefaAtualizada: Tarefa) {
-        val indice = tarefas.indexOfFirst { it.id == tarefaAtualizada.id }
+    suspend fun proximoId(): Int {
 
-        if (indice != -1) {
-            tarefas[indice] = tarefaAtualizada
-        }
+        val lista =
+            storage.tarefas.first()
+
+
+        return (lista.maxOfOrNull {
+            it.id
+        } ?: 0) + 1
+
     }
 
 }

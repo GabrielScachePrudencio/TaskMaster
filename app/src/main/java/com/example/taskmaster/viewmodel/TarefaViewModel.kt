@@ -1,115 +1,412 @@
 package com.example.taskmaster.viewmodel
 
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.taskmaster.model.Tarefa
 import com.example.taskmaster.model.enuns.Prioridade
 import com.example.taskmaster.model.enuns.StatusTarefa
 import com.example.taskmaster.repository.TarefaRepository
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-class TarefaViewModel : ViewModel() {
-    val tarefas = mutableStateListOf<Tarefa>()
 
-    // Guarda a tarefa que está sendo exibida ou editada na tela de detalhes
-    var tarefaSelecionada by mutableStateOf<Tarefa?>(null)
+class TarefaViewModel(
+    private val repository: TarefaRepository
+) : ViewModel() {
+
+
+    val tarefas =
+        mutableStateListOf<Tarefa>()
+
+
+    var tarefaSelecionada by
+    mutableStateOf<Tarefa?>(null)
         private set
 
-    // Controla se a tela está em modo de leitura (false) ou edição (true)
-    var modoEdicao by mutableStateOf(false)
+
+    var modoEdicao by
+    mutableStateOf(false)
         private set
+
 
     init {
+
+
+        viewModelScope.launch {
+
+            repository.inicializar()
+
+        }
+
+
         carregarTarefas()
+
+
     }
 
-    fun carregarTarefas() {
-        tarefas.clear()
-        tarefas.addAll(TarefaRepository.listar())
+
+    private fun carregarTarefas() {
+
+
+        viewModelScope.launch {
+
+
+            repository.tarefas.collect { lista ->
+
+
+                tarefas.clear()
+
+                tarefas.addAll(lista)
+
+
+            }
+
+
+        }
+
+
     }
 
-    // Chame esta função ao clicar em uma tarefa na HomeScreen
-    fun selecionarTarefa(tarefa: Tarefa) {
-        tarefaSelecionada = tarefa
-        modoEdicao = false
+
+    fun selecionarTarefa(
+        tarefa: Tarefa
+    ) {
+
+
+        tarefaSelecionada =
+            tarefa
+
+
+        modoEdicao =
+            false
+
+
     }
+
 
     fun alternarModoEdicao() {
-        modoEdicao = !modoEdicao
+
+
+        modoEdicao =
+            !modoEdicao
+
+
     }
 
-    // Atualiza os campos de texto em tempo real enquanto o usuário digita
-    fun atualizarCamposTexto(novoTitulo: String, novaDescricao: String) {
-        tarefaSelecionada = tarefaSelecionada?.copy(
-            titulo = novoTitulo,
-            descricao = novaDescricao
-        )
+
+    fun atualizarCamposTexto(
+        novoTitulo: String,
+        novaDescricao: String
+    ) {
+
+
+        tarefaSelecionada =
+            tarefaSelecionada?.copy(
+
+                titulo = novoTitulo,
+
+                descricao = novaDescricao
+
+            )
+
+
     }
 
-    // Salva as alterações de texto e enums no repositório local e na lista da UI
+
     fun salvarEdicao() {
-        tarefaSelecionada?.let { tarefaAtualizada ->
-            val indice = tarefas.indexOfFirst { it.id == tarefaAtualizada.id }
-            if (indice != -1) {
-                tarefas[indice] = tarefaAtualizada
-                TarefaRepository.atualizar(tarefaAtualizada)
+
+
+        tarefaSelecionada?.let { tarefa ->
+
+
+            viewModelScope.launch {
+
+
+                repository.atualizar(
+                    tarefa
+                )
+
+
+                modoEdicao =
+                    false
+
+
             }
-            modoEdicao = false
+
+
         }
-    }
 
-    fun trocarStatus(idAtividade: Int, statusNovo: StatusTarefa) {
-        val indice = tarefas.indexOfFirst { it.id == idAtividade }
-        if (indice != -1) {
-            val tarefaAtualizada = tarefas[indice].copy(statusTarefa = statusNovo)
-            tarefas[indice] = tarefaAtualizada
-            TarefaRepository.atualizar(tarefaAtualizada)
 
-            if (tarefaSelecionada?.id == idAtividade) {
-                tarefaSelecionada = tarefaAtualizada
-            }
-        }
-    }
-
-    fun trocarPrioridade(idAtividade: Int, prioridadeNova: Prioridade) {
-        val indice = tarefas.indexOfFirst { it.id == idAtividade }
-        if (indice != -1) {
-            val tarefaAtualizada = tarefas[indice].copy(prioridade = prioridadeNova)
-            tarefas[indice] = tarefaAtualizada
-            TarefaRepository.atualizar(tarefaAtualizada)
-
-            if (tarefaSelecionada?.id == idAtividade) {
-                tarefaSelecionada = tarefaAtualizada
-            }
-        }
     }
 
 
-    fun atualizarDataInicio(idAtividade: Int, novaData: LocalDate?) {
-        val indice = tarefas.indexOfFirst { it.id == idAtividade }
-        if (indice != -1) {
-            val tarefaAtualizada = tarefas[indice].copy(dataInicio = novaData)
-            tarefas[indice] = tarefaAtualizada
-            TarefaRepository.atualizar(tarefaAtualizada)
-            if (tarefaSelecionada?.id == idAtividade) {
-                tarefaSelecionada = tarefaAtualizada
+    fun trocarStatus(
+        idAtividade: Int,
+        statusNovo: StatusTarefa
+    ) {
+
+
+        val tarefa =
+            tarefas.find {
+
+                it.id == idAtividade
+
             }
+
+
+
+        tarefa?.let {
+
+
+            val atualizada =
+                it.copy(
+                    statusTarefa = statusNovo
+                )
+
+
+
+            viewModelScope.launch {
+
+
+                repository.atualizar(
+                    atualizada
+                )
+
+
+            }
+
+
+
+
+            if (
+                tarefaSelecionada?.id ==
+                idAtividade
+            ) {
+
+                tarefaSelecionada =
+                    atualizada
+
+            }
+
+
         }
+
+
     }
 
-    fun atualizarDataFinal(idAtividade: Int, novaData: LocalDate?) {
-        val indice = tarefas.indexOfFirst { it.id == idAtividade }
-        if (indice != -1) {
-            val tarefaAtualizada = tarefas[indice].copy(dataFinal = novaData)
-            tarefas[indice] = tarefaAtualizada
-            TarefaRepository.atualizar(tarefaAtualizada)
-            if (tarefaSelecionada?.id == idAtividade) {
-                tarefaSelecionada = tarefaAtualizada
+
+    fun trocarPrioridade(
+        idAtividade: Int,
+        prioridadeNova: Prioridade
+    ) {
+
+
+        val tarefa =
+            tarefas.find {
+
+                it.id == idAtividade
+
             }
+
+
+
+        tarefa?.let {
+
+
+            val atualizada =
+                it.copy(
+                    prioridade = prioridadeNova
+                )
+
+
+
+            viewModelScope.launch {
+
+
+                repository.atualizar(
+                    atualizada
+                )
+
+
+            }
+
+
+
+
+            if (
+                tarefaSelecionada?.id ==
+                idAtividade
+            ) {
+
+                tarefaSelecionada =
+                    atualizada
+
+            }
+
+
         }
+
+
+    }
+
+
+    fun atualizarDataInicio(
+        idAtividade: Int,
+        novaData: LocalDate?
+    ) {
+
+
+        val tarefa =
+            tarefas.find {
+
+                it.id == idAtividade
+
+            }
+
+
+
+        tarefa?.let {
+
+
+            val atualizada =
+                it.copy(
+                    dataInicio = novaData
+                )
+
+
+
+            viewModelScope.launch {
+
+
+                repository.atualizar(
+                    atualizada
+                )
+
+
+            }
+
+
+
+            if (
+                tarefaSelecionada?.id ==
+                idAtividade
+            ) {
+
+                tarefaSelecionada =
+                    atualizada
+
+            }
+
+
+        }
+
+
+    }
+
+
+    fun atualizarDataFinal(
+        idAtividade: Int,
+        novaData: LocalDate?
+    ) {
+
+
+        val tarefa =
+            tarefas.find {
+
+                it.id == idAtividade
+
+            }
+
+
+
+        tarefa?.let {
+
+
+            val atualizada =
+                it.copy(
+                    dataFinal = novaData
+                )
+
+
+
+            viewModelScope.launch {
+
+
+                repository.atualizar(
+                    atualizada
+                )
+
+
+            }
+
+
+
+            if (
+                tarefaSelecionada?.id ==
+                idAtividade
+            ) {
+
+                tarefaSelecionada =
+                    atualizada
+
+            }
+
+
+        }
+
+
+    }
+
+
+    fun adicionarTarefa(
+        tarefa: Tarefa
+    ) {
+
+
+        viewModelScope.launch {
+
+
+            repository.adicionar(
+                tarefa
+            )
+
+
+        }
+
+
+    }
+
+
+    fun deletarTarefa(
+        id: Int
+    ) {
+
+
+        viewModelScope.launch {
+
+
+            repository.deletar(
+                id
+            )
+
+
+        }
+
+
+    }
+
+
+    suspend fun proximoId(): Int {
+
+
+        return repository.proximoId()
+
+
     }
 
 
