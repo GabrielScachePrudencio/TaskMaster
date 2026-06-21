@@ -2,8 +2,10 @@ package com.example.taskmaster.pages
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -15,12 +17,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.taskmaster.model.enuns.Prioridade
 import com.example.taskmaster.model.enuns.StatusTarefa
 import com.example.taskmaster.util.copiarImagemParaStorage
 import com.example.taskmaster.viewmodel.TarefaViewModel
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -39,7 +46,9 @@ fun TelaDetalheTarefaScreen(
 
     var datePickerAlvo by remember { mutableStateOf<String?>(null) }
     var mostrarDialogoDeletar by remember { mutableStateOf(false) }
-
+    var imagemSelecionada by remember {
+        mutableStateOf<String?>(null)
+    }
     val imagemLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
@@ -283,12 +292,36 @@ fun TelaDetalheTarefaScreen(
                     paths = tarefa.imagens,
                     onRemover = if (isEdicao) { index ->
                         viewModel.removerImagemDaTarefa(tarefa.id, index)
-                    } else null
+                    } else null,
+                    onImagemClick = { path -> imagemSelecionada = path }
+
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+
+        if (imagemSelecionada != null) {
+            Dialog(onDismissRequest = { imagemSelecionada = null }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { imagemSelecionada = null }, // toque fora/na imagem fecha
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = File(imagemSelecionada!!),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f), // ou .height(400.dp), o que preferir
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+        }
+
     }
 }
 
